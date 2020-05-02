@@ -19,7 +19,7 @@ requirements
     aiofile
     aiohttp
 
-example
+example 1
 -------
 
 ::
@@ -40,6 +40,46 @@ example
         root_url = 'https://www.haikson.com'
         crawler(root_url, out_file='sitemap.xml')
 
+example 2
+-------
+
+::
+
+    import sys
+    import logging
+    from pysitemap import crawler
+
+    if __name__ == '__main__':
+        root_url = 'https://mytestsite.com/'
+        crawler(
+            root_url,
+            out_file='sitemap.xml',
+            maxtasks=100,
+            verifyssl=False,
+            exclude_urls=[
+                '/git/.*(action|commit|stars|activity|followers|following|\?sort|issues|pulls|milestones|archive|/labels$|/wiki$|/releases$|/forks$|/watchers$)',
+                '/git/user/(sign_up|login|forgot_password)',
+                '/css',
+                '/js',
+                'favicon',
+                '[a-zA-Z0-9]*\.[a-zA-Z0-9]*$',
+                '\?\.php',
+            ],
+            headers={'User-Agent': 'Crawler'},
+            # TZ offset in hours
+            timezone_offset=3,
+            changefreq={
+              "/git/": "weekly",
+              "/":     "monthly"
+            },
+            priorities={
+              "/git/": 0.7,
+              "/metasub/": 0.6,
+              "/": 0.5
+            }
+        )
+
+
 TODO
 -----
 
@@ -53,6 +93,25 @@ TODO
 
 changelog
 ---------
+
+v. 0.9.3
+''''''''
+
+Added features:
+- Option to enable/disable website SSL certificate verification (True/False)
+- Option to exclude URL patterns (list)
+- Option to provide custom HTTP request headers to web server (dict)
+
+- Add support for <lastmod> tags (XML)
+    - Configurable timezone offset for lastmod tag
+
+- Add support for <changefreq> tags (XML)
+    - Input (dict): { url_regex: changefreq_value, url_regex: ... }
+
+- Add support for <priority> tags (XML)
+    - Input (dict): { url_regex: priority_value, url_regex: ... }
+
+- Reduce default concurrent max tasks from 100 to 10
 
 v. 0.9.2
 ''''''''
