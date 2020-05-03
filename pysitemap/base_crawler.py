@@ -14,9 +14,9 @@ class Crawler:
         'txt': TextWriter
     }
 
-    def __init__(self, rooturl, out_file, out_format='xml', maxtasks=10, exclude_urls=[], exclude_imgs=[],
+    def __init__(self, rooturl, out_file, out_format='xml', maxtasks=100, exclude_urls=[], exclude_imgs=[],
                  verifyssl=True, headers=None, timezone_offset=0, changefreq=None, priorities=None,
-                 todo_queue_backend=set, done_backend=dict):
+                 todo_queue_backend=set, done_backend=dict, done_images=list):
         """
         Crawler constructor
         :param rooturl: root url of site
@@ -25,7 +25,7 @@ class Crawler:
         :type out_file: str
         :param out_format: sitemap type [xml | txt]. Default xml
         :type out_format: str
-        :param maxtasks: maximum count of tasks. Default 10
+        :param maxtasks: maximum count of tasks. Default 100
         :type maxtasks: int
         :param exclude_urls: excludable url paths relative to root url
         :type exclude_urls: list
@@ -46,6 +46,7 @@ class Crawler:
         self.todo_queue = todo_queue_backend()
         self.busy = set()
         self.done = done_backend()
+        self.done_images = done_images()
         self.tasks = set()
         self.sem = asyncio.Semaphore(maxtasks)
         self.timezone_offset = timezone_offset
@@ -162,11 +163,15 @@ class Crawler:
         for img in imgs:
             if not await self.contains(img, self.exclude_imgs, rlist=True):
                 if img.startswith(self.rooturl):
-                      if await self.mimechecker(img, '^image\/'):
+                      if (await self.mimechecker(img, '^image\/') and
+                          img not in self.done_images):
                           imgs_ok.append(img)
                 elif not img.startswith("http"):
-                      if await self.mimechecker(img, '^image\/'):
+                      if (await self.mimechecker(img, '^image\/') and
+                          img not in self.done_images):
                           imgs_ok.append(re.sub('/$', '', self.rooturl) + img)
+
+        self.done_images.extend(imgs_ok)
         return imgs_ok
 
     async def process(self, url):
