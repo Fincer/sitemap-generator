@@ -14,7 +14,7 @@ class Crawler:
         'txt': TextWriter
     }
 
-    def __init__(self, rooturl, out_file, out_format='xml', maxtasks=100, exclude_urls=[], exclude_imgs=[],
+    def __init__(self, rooturl, out_file, out_format='xml', maxtasks=10, exclude_urls=[], exclude_imgs=[],
                  verifyssl=True, headers=None, timezone_offset=0, changefreq=None, priorities=None,
                  todo_queue_backend=set, done_backend=dict):
         """
@@ -25,7 +25,7 @@ class Crawler:
         :type out_file: str
         :param out_format: sitemap type [xml | txt]. Default xml
         :type out_format: str
-        :param maxtasks: maximum count of tasks. Default 100
+        :param maxtasks: maximum count of tasks. Default 10
         :type maxtasks: int
         :param exclude_urls: excludable url paths relative to root url
         :type exclude_urls: list
@@ -122,6 +122,21 @@ class Crawler:
                 # Add task into tasks
                 self.tasks.add(task)
 
+    async def mimechecker(self, url, expected):
+        """
+        Check url resource mimetype
+        """
+        try:
+            resp = await self.session.get(url)
+        except Exception as exc:
+            pass
+        else:
+            mime = resp.headers.get('content-type')
+            if (resp.status == 200 and
+                bool(re.search(re.compile(r"{}".format(expected)), mime))):
+                return True
+        return False
+
     async def addimages(self, data):
         """
         Find all images in website data
@@ -147,9 +162,11 @@ class Crawler:
         for img in imgs:
             if not await self.contains(img, self.exclude_imgs, rlist=True):
                 if img.startswith(self.rooturl):
-                    imgs_ok.append(img)
+                      if await self.mimechecker(img, '^image\/'):
+                          imgs_ok.append(img)
                 elif not img.startswith("http"):
-                    imgs_ok.append(re.sub('/$', '', self.rooturl) + img)
+                      if await self.mimechecker(img, '^image\/'):
+                          imgs_ok.append(re.sub('/$', '', self.rooturl) + img)
         return imgs_ok
 
     async def process(self, url):
