@@ -65,6 +65,10 @@ if __name__ == '__main__':
             'avatar_default',
             '/symbols/'
         ],
+        image_root_urls=[
+            'https://mytestsite.com/photos/',
+            'https://mytestsite.com/git/',
+        ],
         headers={'User-Agent': 'Crawler'},
         # TZ offset in hours
         timezone_offset=3,
