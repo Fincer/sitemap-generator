@@ -1,4 +1,4 @@
-kimport asyncio
+import asyncio
 import signal
 from pysitemap.base_crawler import Crawler
 
