@@ -109,15 +109,15 @@ Added features:
 
 - Option to provide custom HTTP request headers to web server (`dict`)
 
-- Add support for <lastmod> tags (XML)
+- Add support for `<lastmod>` tags (XML)
 
     - Configurable timezone offset for lastmod tag
 
-- Add support for <changefreq> tags (XML)
+- Add support for `<changefreq>` tags (XML)
 
     - Input (`dict`): `{ url_regex: changefreq_value, url_regex: ... }`
 
-- Add support for <priority> tags (XML)
+- Add support for `<priority>` tags (XML)
 
     - Input (`dict`): `{ url_regex: priority_value, url_regex: ... }`
 

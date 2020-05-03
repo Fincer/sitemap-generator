@@ -5,7 +5,7 @@ EXCLUDE_FROM_PACKAGES = ['tests',]
 
 def get_long_description():
     long_description = ""
-    with open("README.rst", "r") as fh:
+    with open("README.md", "r") as fh:
         long_description = fh.read()
     return long_description
 
