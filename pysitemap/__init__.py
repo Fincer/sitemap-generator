@@ -5,7 +5,7 @@ from pysitemap.base_crawler import Crawler
 
 def crawler(
     root_url, out_file, out_format='xml',
-    maxtasks=10, exclude_urls=[], verifyssl=True,
+    maxtasks=10, exclude_urls=[], exclude_imgs=[], verifyssl=True,
     headers=None, timezone_offset=0, changefreq=None,
     priorities=None):
     """
@@ -15,6 +15,7 @@ def crawler(
     :param out_format: format of out file [xml, txt]
     :param maxtasks: max count of tasks
     :param exclude_urls: excludable url paths
+    :param exclude_imgs: excludable img url paths
     :param verifyssl: verify website certificate?
     :param headers: Send these headers in every request
     :param timezone_offset: timezone offset for lastmod tags
@@ -25,7 +26,7 @@ def crawler(
     loop = asyncio.get_event_loop()
 
     c = Crawler(root_url, out_file=out_file, out_format=out_format,
-                maxtasks=maxtasks, exclude_urls=exclude_urls, verifyssl=verifyssl,
+                maxtasks=maxtasks, exclude_urls=exclude_urls, exclude_imgs=exclude_imgs, verifyssl=verifyssl,
                 headers=headers, timezone_offset=timezone_offset,
                 changefreq=changefreq, priorities=priorities)
 

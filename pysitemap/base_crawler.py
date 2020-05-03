@@ -14,8 +14,8 @@ class Crawler:
         'txt': TextWriter
     }
 
-    def __init__(self, rooturl, out_file, out_format='xml', maxtasks=10, exclude_urls=[], verifyssl=True,
-                 headers=None, timezone_offset=0, changefreq=None, priorities=None,
+    def __init__(self, rooturl, out_file, out_format='xml', maxtasks=100, exclude_urls=[], exclude_imgs=[],
+                 verifyssl=True, headers=None, timezone_offset=0, changefreq=None, priorities=None,
                  todo_queue_backend=set, done_backend=dict):
         """
         Crawler constructor
@@ -25,10 +25,12 @@ class Crawler:
         :type out_file: str
         :param out_format: sitemap type [xml | txt]. Default xml
         :type out_format: str
-        :param maxtasks: maximum count of tasks. Default 10
+        :param maxtasks: maximum count of tasks. Default 100
         :type maxtasks: int
         :param exclude_urls: excludable url paths relative to root url
         :type exclude_urls: list
+        :param exclude_imgs: excludable img url paths relative to root url
+        :type exclude_imgs: list
         :param verifyssl: verify website certificate?
         :type verifyssl: boolean
         :param timezone_offset: timezone offset for lastmod tags
@@ -40,6 +42,7 @@ class Crawler:
         """
         self.rooturl = rooturl
         self.exclude_urls = exclude_urls
+        self.exclude_imgs = exclude_imgs
         self.todo_queue = todo_queue_backend()
         self.busy = set()
         self.done = done_backend()
@@ -119,6 +122,36 @@ class Crawler:
                 # Add task into tasks
                 self.tasks.add(task)
 
+    async def addimages(self, data):
+        """
+        Find all images in website data
+        """
+        imgs = []
+        imgs_ok = []
+        lines_tmp = []
+        tag = False
+        for line in data.split('\n'):
+            if re.search(r'<img', line):
+                tag = True
+            if re.search(r'<img', line) and re.search(r'\/>', line):
+                tag = False
+                lines_tmp.append(line)
+                continue
+            if re.search(r'\/>', line) and tag:
+                tag = False
+            if tag:
+                lines_tmp.append(line)
+
+        imgs = re.findall(r'(?i)src=["\']?([^\s\"\'<>]+)', str(lines_tmp))
+
+        for img in imgs:
+            if not await self.contains(img, self.exclude_imgs, rlist=True):
+                if img.startswith(self.rooturl):
+                    imgs_ok.append(img)
+                elif not img.startswith("http"):
+                    imgs_ok.append(re.sub('/$', '', self.rooturl) + img)
+        return imgs_ok
+
     async def process(self, url):
         """
         Process single url
@@ -134,13 +167,14 @@ class Crawler:
         lastmod = None
         cf = None
         pr = None
+        imgs = []
 
         try:
             resp = await self.session.get(url)  # await response
         except Exception as exc:
             # on any exception mark url as BAD
             print('...', url, 'has error', repr(str(exc)))
-            self.done[url] = [False, lastmod, cf, pr]
+            self.done[url] = [False, lastmod, cf, pr, imgs]
         else:
             # only url with status == 200 and content type == 'text/html' parsed
             if (resp.status == 200 and
@@ -148,7 +182,7 @@ class Crawler:
                 data = (await resp.read()).decode('utf-8', 'replace')
                 urls = re.findall(r'(?i)href=["\']?([^\s"\'<>]+)', data)
                 lastmod = resp.headers.get('last-modified')
-
+                imgs = await self.addimages(data)
                 asyncio.Task(self.addurls([(u, url) for u in urls]))
 
                 try: pr = await self.urldict(url, self.changefreq)
@@ -160,7 +194,7 @@ class Crawler:
             # even if we have no exception, we can mark url as good
             resp.close()
 
-            self.done[url] = [True, lastmod, cf, pr]
+            self.done[url] = [True, lastmod, cf, pr, imgs]
 
         self.busy.remove(url)
         logging.info(len(self.done), 'completed tasks,', len(self.tasks),

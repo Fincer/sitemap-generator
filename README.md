@@ -59,6 +59,12 @@ if __name__ == '__main__':
             '[a-zA-Z0-9]*\.[a-zA-Z0-9]*$',
             '\?\.php',
         ],
+        exclude_imgs=[
+            'logo\.(png|jpg)',
+            'avatars',
+            'avatar_default',
+            '/symbols/'
+        ],
         headers={'User-Agent': 'Crawler'},
         # TZ offset in hours
         timezone_offset=3,

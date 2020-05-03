@@ -22,6 +22,8 @@ class XMLWriter():
                 timestamp  = data[1][1]
                 changefreq = data[1][2]
                 priority   = data[1][3]
+                images     = data[1][4]
+
                 url = "<loc>{}</loc>".format(data[0])
 
                 if timestamp is not None:
@@ -33,6 +35,10 @@ class XMLWriter():
 
                 if priority is not None:
                     url += "<priority>{}</priority>".format(str(priority))
+
+                if len(images) > 0:
+                    for image in images:
+                        url += "<image:image><image:loc>{}</image:loc></image:image>".format(str(image))
 
                 await writer('<url>{}</url>\n'.format(url))
 
