@@ -141,7 +141,7 @@ class Crawler:
         else:
             mime = resp.headers.get('content-type')
             if (resp.status == 200 and
-                bool(re.search(re.compile(r"{}".format(expected)), mime))):
+                bool(re.search(re.compile(r'{}'.format(expected)), mime))):
                 resp.close()
                 self.busy.remove(url)
                 return True
@@ -149,67 +149,107 @@ class Crawler:
         self.busy.remove(url)
         return False
 
-    async def addimages(self, data, url):
+    async def fetchtags(self, data, url, tag_input, fields=[]):
         """
-        Find all images in website data
+        Find and sort all target tags from website data
         """
-        imgs = []
-        imgs_ok = []
-        lines_tmp = []
-        tag = False
+        tags = []
+        lines_join = []
         for line in data.split('\n'):
-            if re.search(r'<img', line):
-                tag = True
-            if re.search(r'<img', line) and re.search(r'\/>', line):
-                tag = False
-                lines_tmp.append(line)
-                continue
-            if re.search(r'\/>', line) and tag:
-                tag = False
-            if tag:
-                lines_tmp.append(line)
+            lines_join.append(line)
 
-        imgs = re.findall(r'(?i)src=["\']?([^\s\"\'<>]+)', str(lines_tmp))
+        tags_raw = re.findall(re.compile(r'<{}.*?>'.format(tag_input)), ' '.join(lines_join))
 
-        for img in imgs:
-            image_url = ""
-            if not await self.contains(img, self.exclude_imgs, rlist=True):
+        for tag_raw in tags_raw:
+            tag_raw = re.sub(re.compile(r'<{}(.*?)>'.format(tag_input)), '\\1', tag_raw)
 
-                if img.startswith(self.rooturl):
-                    image_url = img
+            # Regex lookahead + lookbehind
+            # Find patterns, where pattern start with "<word>=" and ends with " <word>="
+            # Include the first pattern, which will be used to determine
+            # value which the pattern holds in it
 
-                elif not img.startswith("http"):
-                    for image_root_url in self.image_root_urls:
-                        if url.startswith(image_root_url):
-                            image_url = image_root_url + img
-                            break
+            # TODO Note: this method is error-prone, since it assumes that...
+            #  ... no argument value inside <img ... /> tag has value of "<somechar>="
+            #  If this happens, args regex findall & splitting (below) fails.
+            args_raw = re.findall(r'(?i)(?=[\w]+[=]|[\w\"\'])(.*?)(?=\s[\w]+[=])', tag_raw)
+            tag = []
+            for arg_raw in args_raw:
+                arg = arg_raw.split('=')
+                if len(arg) != 2:
+                    print("warning: failure on tag data parsing operation.")
+                    continue
 
-                if (image_url != "" and
-                    image_url not in self.done_images and
-                    image_url not in self.busy and
-                    image_url not in self.todo_queue):
-                    self.todo_queue.add(image_url)
-                    # Acquire semaphore
-                    await self.sem.acquire()
-                    # Create async task
-                    task = asyncio.ensure_future(self.mimechecker(image_url, '^image\/'))
-                    # Add collback into task to release semaphore
-                    task.add_done_callback(lambda t: self.sem.release())
-                    # Callback to remove task from tasks
-                    task.add_done_callback(self.tasks.remove)
-                    # Add task into tasks
-                    self.tasks.add(task)
-                    try:
-                        result = await asyncio.wait_for(task, timeout=20)
-                        if (result):
-                            imgs_ok.append(image_url)
-                    except asyncio.TimeoutError:
-                        print("couldn't add image:", image_url)
-                        task.cancel()
-                        pass
+                arg_dict = {}
+                key = arg[0]
+                # Remove leading and trailing quote marks from value
+                value = re.sub(r'^["\']?(.*?)["\']?$', '\\1', arg[1])
 
-        self.done_images.extend(imgs_ok)
-        return imgs_ok
+                for field in fields:
+                    if key == field:
+                        arg_dict[field] = value
+#                    else:
+#                        print("warning: ignoring tag data value:", key)
+
+                if len(arg_dict) == 1:
+                    tag.append(arg_dict)
+            tags.append(tag)
+        return tags
+
+    async def addtagdata(self, tagdata, url, source_url_field,
+                            mimetype, tag_root_urls=[], excludes=[],
+                            done_list=[], this_domain=True):
+        """
+        Validate existence of url in given tagdata
+        :return: dictionary of validated tags (of single type)
+        """
+        tags = []
+        for data in tagdata:
+            for tag in data:
+                if not source_url_field in tag:
+                    continue
+                tag_full_url = ""
+                if not await self.contains(tag[source_url_field], excludes, rlist=True):
+
+                    if this_domain:
+                        if tag[source_url_field].startswith(self.rooturl):
+                            tag_full_url = tag[source_url_field]
+
+                        elif not tag[source_url_field].startswith('http'):
+                            for tag_root_url in tag_root_urls:
+                                if url.startswith(tag_root_url):
+                                    tag_full_url = tag_root_url + tag[source_url_field]
+                                    break
+                    else:
+                        if tag[source_url_field].startswith('http'):
+                            tag_full_url = tag[source_url_field]
+
+                    if (tag_full_url != "" and
+                        data not in done_list and
+                        tag_full_url not in self.busy and
+                        tag_full_url not in self.todo_queue):
+                        self.todo_queue.add(tag_full_url)
+                        # Acquire semaphore
+                        await self.sem.acquire()
+                        # Create async task
+                        task = asyncio.ensure_future(self.mimechecker(tag_full_url, mimetype))
+                        # Add collback into task to release semaphore
+                        task.add_done_callback(lambda t: self.sem.release())
+                        # Callback to remove task from tasks
+                        task.add_done_callback(self.tasks.remove)
+                        # Add task into tasks
+                        self.tasks.add(task)
+                        try:
+                            result = await asyncio.wait_for(task, timeout=20)
+                            if (result):
+                                tags.append(data)
+
+                        except asyncio.TimeoutError:
+                            print("couldn't add tag data:", tag_full_url)
+                            task.cancel()
+                            pass
+
+            done_list.extend(tags)
+        return tags
 
     async def process(self, url):
         """
@@ -240,8 +280,23 @@ class Crawler:
                     ('text/html' in resp.headers.get('content-type'))):
                 data = (await resp.read()).decode('utf-8', 'replace')
                 urls = re.findall(r'(?i)href=["\']?([^\s"\'<>]+)', data)
+
                 lastmod = resp.headers.get('last-modified')
-                imgs = await self.addimages(data, url)
+
+                # Ref: https://support.google.com/webmasters/answer/178636?hl=en
+                img_data = await self.fetchtags(
+                            data, url, 'img',
+                            fields=['src', 'title', 'caption', 'geo_location', 'license']
+                )
+                imgs = await self.addtagdata(
+                        tagdata=img_data, url=url,
+                        source_url_field='src', mimetype='^image\/',
+                        tag_root_urls=self.image_root_urls,
+                        excludes=self.exclude_imgs,
+                        done_list=self.done_images,
+                        this_domain=True
+                )
+
                 asyncio.Task(self.addurls([(u, url) for u in urls]))
 
                 try: pr = await self.urldict(url, self.changefreq)

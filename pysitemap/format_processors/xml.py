@@ -23,7 +23,7 @@ class XMLWriter():
                 timestamp  = data[1][1]
                 changefreq = data[1][2]
                 priority   = data[1][3]
-                images     = data[1][4]
+                image_data = data[1][4]
 
                 url = "<loc>{}</loc>".format(data[0])
 
@@ -37,9 +37,17 @@ class XMLWriter():
                 if priority is not None:
                     url += "<priority>{}</priority>".format(str(priority))
 
-                if len(images) > 0:
-                    for image in images:
-                        url += "<image:image><image:loc>{}</image:loc></image:image>".format(str(image))
+                if len(image_data) > 0:
+                    for image in image_data:
+                        for arg in image:
+                            image_xml = ""
+                            if 'src' in arg:          image_xml += "<image:loc>{}</image:loc>".format(arg['src'])
+                            if 'title' in arg:        image_xml += "<image:title>{}</image:title>".format(arg['title'])
+                            if 'caption' in arg:      image_xml += "<image:caption>{}</image:caption>".format(arg['caption'])
+                            if 'geo_location' in arg: image_xml += "<image:geo_location>{}</image:geo_location>".format(arg['geo_location'])
+                            if 'license' in arg:      image_xml += "<image:license>{}</image:license>".format(arg['license'])
+
+                            url += "<image:image>{}</image:image>".format(image_xml)
 
                 await writer('<url>{}</url>\n'.format(url))
 
