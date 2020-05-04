@@ -183,6 +183,7 @@ class Crawler:
                 key = arg[0]
                 # Remove leading and trailing quote marks from value
                 value = re.sub(r'^["\']?(.*?)["\']?$', '\\1', arg[1])
+                value = re.sub(r'&', '&amp;', value)
 
                 for field in fields:
                     if key == field:
