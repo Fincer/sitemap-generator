@@ -14,8 +14,8 @@ class Crawler:
         'txt': TextWriter
     }
 
-    def __init__(self, rooturl, out_file, out_format='xml', maxtasks=10, exclude_urls=list, exclude_imgs=list,
-                 image_root_urls=list, verifyssl=True, headers=None, timezone_offset=0, changefreq=None, priorities=None,
+    def __init__(self, rooturl, out_file, out_format='xml', maxtasks=10, exclude_urls=[], exclude_imgs=[],
+                 image_root_urls=[], verifyssl=True, headers=None, timezone_offset=0, changefreq=None, priorities=None,
                  todo_queue_backend=set, done_backend=dict, done_images=list):
         """
         Crawler constructor
@@ -207,31 +207,27 @@ class Crawler:
             for tag in data:
                 if not source_url_field in tag:
                     continue
-                tag_full_url = ""
                 if not await self.contains(tag[source_url_field], excludes, rlist=True):
 
                     if this_domain:
-                        if tag[source_url_field].startswith(self.rooturl):
-                            tag_full_url = tag[source_url_field]
-
-                        elif not tag[source_url_field].startswith('http'):
+                        if not tag[source_url_field].startswith('http'):
                             for tag_root_url in tag_root_urls:
                                 if url.startswith(tag_root_url):
-                                    tag_full_url = tag_root_url + tag[source_url_field]
+                                    tag[source_url_field] = tag_root_url + tag[source_url_field]
                                     break
                     else:
-                        if tag[source_url_field].startswith('http'):
-                            tag_full_url = tag[source_url_field]
+                        if not tag[source_url_field].startswith('http'):
+                            continue
 
-                    if (tag_full_url != "" and
+                    if (tag[source_url_field].startswith('http') and
                         data not in done_list and
-                        tag_full_url not in self.busy and
-                        tag_full_url not in self.todo_queue):
-                        self.todo_queue.add(tag_full_url)
+                        tag[source_url_field] not in self.busy and
+                        tag[source_url_field] not in self.todo_queue):
+                        self.todo_queue.add(tag[source_url_field])
                         # Acquire semaphore
                         await self.sem.acquire()
                         # Create async task
-                        task = asyncio.ensure_future(self.mimechecker(tag_full_url, mimetype))
+                        task = asyncio.ensure_future(self.mimechecker(tag[source_url_field], mimetype))
                         # Add collback into task to release semaphore
                         task.add_done_callback(lambda t: self.sem.release())
                         # Callback to remove task from tasks
@@ -244,7 +240,7 @@ class Crawler:
                                 tags.append(data)
 
                         except asyncio.TimeoutError:
-                            print("couldn't add tag data:", tag_full_url)
+                            print("couldn't add tag data:", tag[source_url_field])
                             task.cancel()
                             pass
 
