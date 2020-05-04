@@ -39,15 +39,14 @@ class XMLWriter():
 
                 if len(image_data) > 0:
                     for image in image_data:
-                        for arg in image:
-                            image_xml = ""
-                            if 'src' in arg:          image_xml += "<image:loc>{}</image:loc>".format(arg['src'])
-                            if 'title' in arg:        image_xml += "<image:title>{}</image:title>".format(arg['title'])
-                            if 'caption' in arg:      image_xml += "<image:caption>{}</image:caption>".format(arg['caption'])
-                            if 'geo_location' in arg: image_xml += "<image:geo_location>{}</image:geo_location>".format(arg['geo_location'])
-                            if 'license' in arg:      image_xml += "<image:license>{}</image:license>".format(arg['license'])
+                        image_xml = ""
+                        if 'src' in image:          image_xml += "<image:loc>{}</image:loc>".format(image['src'])
+                        if 'title' in image:        image_xml += "<image:title>{}</image:title>".format(image['title'])
+                        if 'caption' in image:      image_xml += "<image:caption>{}</image:caption>".format(image['caption'])
+                        if 'geo_location' in image: image_xml += "<image:geo_location>{}</image:geo_location>".format(image['geo_location'])
+                        if 'license' in image:      image_xml += "<image:license>{}</image:license>".format(image['license'])
 
-                            url += "<image:image>{}</image:image>".format(image_xml)
+                        url += "<image:image>{}</image:image>".format(image_xml)
 
                 await writer('<url>{}</url>\n'.format(url))
 
