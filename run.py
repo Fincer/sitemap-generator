@@ -9,6 +9,8 @@ if __name__ == '__main__':
         out_file='sitemap.xml',
         maxtasks=100,
         verifyssl=False,
+        findimages=True,
+        images_this_domain=True,
         exclude_urls=[
             '/git/.*(action|commit|stars|activity|followers|following|\?sort|issues|pulls|milestones|archive|/labels$|/wiki$|/releases$|/forks$|/watchers$)',
             '/git/user/(sign_up|login|forgot_password)',

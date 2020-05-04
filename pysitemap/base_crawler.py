@@ -15,8 +15,8 @@ class Crawler:
     }
 
     def __init__(self, rooturl, out_file, out_format='xml', maxtasks=10, exclude_urls=[], exclude_imgs=[],
-                 image_root_urls=[], verifyssl=True, headers=None, timezone_offset=0, changefreq=None, priorities=None,
-                 todo_queue_backend=set, done_backend=dict, done_images=list):
+                 image_root_urls=[], verifyssl=True, findimages=True, images_this_domain=True, headers=None, timezone_offset=0,
+                 changefreq=None, priorities=None, todo_queue_backend=set, done_backend=dict, done_images=list):
         """
         Crawler constructor
         :param rooturl: root url of site
@@ -34,7 +34,11 @@ class Crawler:
         :param image_root_urls: recognized image root urls on the domain
         :type image_root_urls: list
         :param verifyssl: verify website certificate?
-        :type verifyssl: boolean
+        :type verifyssl: bool
+        :param findimages: Find images references?
+        :type findimages: bool
+        :param images_this_domain: Find images which refer to this domain only?
+        :type images_this_domain: bool
         :param timezone_offset: timezone offset for lastmod tags
         :type timezone_offset: int
         :param changefreq: dictionary, where key is site sub url regex, and value is changefreq
@@ -46,6 +50,8 @@ class Crawler:
         self.exclude_urls = exclude_urls
         self.exclude_imgs = exclude_imgs
         self.image_root_urls = image_root_urls
+        self.findimages = findimages
+        self.images_this_domain = images_this_domain
         self.todo_queue = todo_queue_backend()
         self.busy = set()
         self.done = done_backend()
@@ -184,7 +190,6 @@ class Crawler:
                 # Remove leading and trailing quote marks from value
                 value = re.sub(r'^["\']?(.*?)["\']?$', '\\1', arg[1])
                 value = re.sub(r'&', '&amp;', value)
-
                 for field in fields:
                     if key == field:
                         arg_dict[field] = value
@@ -280,19 +285,20 @@ class Crawler:
 
                 lastmod = resp.headers.get('last-modified')
 
-                # Ref: https://support.google.com/webmasters/answer/178636?hl=en
-                img_data = await self.fetchtags(
-                            data, url, 'img',
-                            fields=['src', 'title', 'caption', 'geo_location', 'license']
-                )
-                imgs = await self.addtagdata(
-                        tagdata=img_data, url=url,
-                        source_url_field='src', mimetype='^image\/',
-                        tag_root_urls=self.image_root_urls,
-                        excludes=self.exclude_imgs,
-                        done_list=self.done_images,
-                        this_domain=True
-                )
+                if self.findimages:
+                    # Ref: https://support.google.com/webmasters/answer/178636?hl=en
+                    img_data = await self.fetchtags(
+                                data, url, 'img',
+                                fields=['src', 'title', 'caption', 'geo_location', 'license']
+                    )
+                    imgs = await self.addtagdata(
+                            tagdata=img_data, url=url,
+                            source_url_field='src', mimetype='^image\/',
+                            tag_root_urls=self.image_root_urls,
+                            excludes=self.exclude_imgs,
+                            done_list=self.done_images,
+                            this_domain=self.images_this_domain
+                    )
 
                 asyncio.Task(self.addurls([(u, url) for u in urls]))
 
