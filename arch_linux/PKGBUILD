@@ -1,0 +1,26 @@
+# Maintainer: Pekka Helenius <fincer89 [at] hotmail [dot] com>
+
+pkgname=python-sitemap-generator
+_pkgname=sitemap-generator
+pkgver=73.f384a78
+pkgrel=1
+pkgdesc='Python website crawler module'
+arch=('any')
+url='https://github.com/Fincer/sitemap-generator'
+license=('Apache2')
+depends=('python' 'python-aiohttp' 'python-aiofiles' 'python-aiofile')
+makedepends=('git' 'python')
+source=(
+  "$pkgname::git+https://github.com/Fincer/${_pkgname}.git"
+)
+sha512sums=('SKIP')
+
+pkgver() {
+  cd ${pkgname}
+  echo $(git rev-list --count HEAD).$(git rev-parse --short HEAD)
+}
+
+package() {
+  cd ${pkgname}
+  python setup.py install --root="$pkgdir/"
+}
