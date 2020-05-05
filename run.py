@@ -30,6 +30,7 @@ if __name__ == '__main__':
             'https://mytestsite.com/photos/',
             'https://mytestsite.com/git/',
         ],
+        use_lastmodified=False,
         headers={'User-Agent': 'Crawler'},
         # TZ offset in hours
         timezone_offset=3,

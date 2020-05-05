@@ -15,8 +15,9 @@ class Crawler:
     }
 
     def __init__(self, rooturl, out_file, out_format='xml', maxtasks=10, exclude_urls=[], exclude_imgs=[],
-                 image_root_urls=[], verifyssl=True, findimages=True, images_this_domain=True, headers=None, timezone_offset=0,
-                 changefreq=None, priorities=None, todo_queue_backend=set, done_backend=dict, done_images=list):
+                 image_root_urls=[], use_lastmodified=True, verifyssl=True, findimages=True, images_this_domain=True,
+                 headers=None, timezone_offset=0, changefreq=None, priorities=None, todo_queue_backend=set,
+                 done_backend=dict, done_images=list):
         """
         Crawler constructor
         :param rooturl: root url of site
@@ -33,6 +34,8 @@ class Crawler:
         :type exclude_imgs: list
         :param image_root_urls: recognized image root urls on the domain
         :type image_root_urls: list
+        :param use_lastmodified: enable or disable timestamps for fetched urls?
+        :type use_lastmodified: bool
         :param verifyssl: verify website certificate?
         :type verifyssl: bool
         :param findimages: Find images references?
@@ -49,6 +52,7 @@ class Crawler:
         self.rooturl = rooturl
         self.exclude_urls = exclude_urls
         self.exclude_imgs = exclude_imgs
+        self.use_lastmodified = use_lastmodified
         self.image_root_urls = image_root_urls
         self.findimages = findimages
         self.images_this_domain = images_this_domain
@@ -281,7 +285,8 @@ class Crawler:
                 data = (await resp.read()).decode('utf-8', 'replace')
                 urls = re.findall(r'(?i)href=["\']?([^\s"\'<>]+)', data)
 
-                lastmod = resp.headers.get('last-modified')
+                if self.use_lastmodified:
+                    lastmod = resp.headers.get('last-modified')
 
                 if self.findimages:
                     # Ref: https://support.google.com/webmasters/answer/178636?hl=en
